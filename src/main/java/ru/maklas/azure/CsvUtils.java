@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -14,7 +15,7 @@ public class CsvUtils {
 
 	public static <T> void writeCsv(File csvFile, Array<T> data, String head) {
 		try (FileOutputStream fos = FileUtils.openOutputStream(csvFile)) {
-			OutputStreamWriter osw = new OutputStreamWriter(fos);
+			OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
 			if (StringUtils.isNotEmpty(head)) {
 				osw.write(head);
 				osw.write("\r\n");
