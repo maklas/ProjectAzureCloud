@@ -1,24 +1,28 @@
 @people =
     EXTRACT id                  int,
             name                string,
+            last_name           string,
+            passport            string,
+            gender              string,
+            birth_date          string
     FROM @"/Data/people.csv"
-    USING Extractors.Text(delimiter:',', quoting:false, skipFirstNRows:1);
+    USING Extractors.Text(delimiter:',', quoting:true, skipFirstNRows:1);
 
 @scores =
-    EXTRACT person_id             int,
-            score                 int
+    EXTRACT user_id             int,
+            score               int
     FROM @"/Data/scores.csv"
     USING Extractors.Text(delimiter:',', quoting:false, skipFirstNRows:1);
 
 @result =
     SELECT p.id,
-           p.name
+           p.name,
            s.score
     FROM @people AS p
         JOIN
             @scores AS s
-        ON p.id == s.person_id
-    WHERE s.score > 50;
+        ON p.id == s.user_id
+    WHERE s.score > 85;
 
 OUTPUT @result
     TO @"/Result/names_scores.csv"
