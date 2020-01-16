@@ -1,13 +1,25 @@
- @departments  =
-     SELECT * FROM
-         (VALUES
-             (31,    "Sales"),
-             (33,    "Engineering"),
-             (34,    "Clerical"),
-             (35,    "Marketing")
-         ) AS
-               D( DepID, DepName );
+@people =
+    EXTRACT id                  int,
+            name                string,
+    FROM @"/Data/people.csv"
+    USING Extractors.Text(delimiter:',', quoting:false, skipFirstNRows:1);
 
- OUTPUT @departments
-     TO "/Result/departments.csv"
- USING Outputters.Csv();
+@scores =
+    EXTRACT person_id             int,
+            score                 int
+    FROM @"/Data/scores.csv"
+    USING Extractors.Text(delimiter:',', quoting:false, skipFirstNRows:1);
+
+@result =
+    SELECT p.id,
+           p.name
+           s.score
+    FROM @people AS p
+        JOIN
+            @scores AS s
+        ON p.id == s.person_id
+    WHERE s.score > 50;
+
+OUTPUT @result
+    TO @"/Result/names_scores.csv"
+    USING Outputters.Csv();
