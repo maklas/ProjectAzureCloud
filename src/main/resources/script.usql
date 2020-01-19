@@ -1,3 +1,6 @@
+
+/** EXTRACTIONS **/
+
 @people =
     EXTRACT id                  int,
             name                string,
@@ -8,22 +11,143 @@
     FROM @"/Data/people.csv"
     USING Extractors.Text(delimiter:',', quoting:true, skipFirstNRows:1);
 
+@jobs = 
+    EXTRACT id          int,
+            person_id   int,
+            job_name    string,
+            salary      int   //rubles
+    FROM @"/Data/jobs.csv"
+    USING Extractors.Text(delimiter:',', quoting:true, skipFirstNRows:1);
+
+@credit_histories = 
+    EXTRACT id      int,
+            person_id int,
+            amount  int, //rubles
+            period  int //months
+    FROM @"/Data/credit_histories.csv"
+    USING Extractors.Text(delimiter:',', quoting:true, skipFirstNRows:1);
+
+@marriages = 
+    EXTRACT id                  int,
+            person_id           int,
+            engagement_date     string
+    FROM @"/Data/marriages.csv"
+    USING Extractors.Text(delimiter:',', quoting:true, skipFirstNRows:1);
+
+
 @scores =
-    EXTRACT user_id             int,
+    EXTRACT person_id             int,
             score               int
     FROM @"/Data/scores.csv"
     USING Extractors.Text(delimiter:',', quoting:false, skipFirstNRows:1);
 
-@result =
-    SELECT p.id,
-           p.name,
-           s.score
-    FROM @people AS p
-        JOIN
-            @scores AS s
-        ON p.id == s.user_id
-    WHERE s.score > 85;
 
-OUTPUT @result
-    TO @"/Result/names_scores.csv"
+/** CALCULATIONS **/
+
+@scores_per_gender = 
+    SELECT "M" AS gender, AVG ((float)s.score) AS avg_score 
+    FROM @scores AS s
+        JOIN 
+            @people AS p
+        ON p.id == s.person_id
+    WHERE
+        p.gender == "M"
+UNION
+    SELECT "F" AS gender, AVG ((float)s.score) AS avg_score 
+    FROM @scores AS s
+        JOIN 
+            @people AS p
+        ON p.id == s.person_id
+    WHERE
+        p.gender == "F";
+
+@scores_per_marriage = 
+    SELECT "married" AS status, AVG ((float)s.score) AS avg_score 
+    FROM @scores AS s
+        JOIN 
+            @people AS p
+        ON p.id == s.person_id
+        JOIN 
+            @marriages AS m
+        ON p.id == m.person_id
+    WHERE m.id != null
+UNION
+    SELECT "unmarried" AS status, AVG ((float)s.score) AS avg_score 
+    FROM @scores AS s
+        JOIN 
+            @people AS p
+        ON p.id == s.person_id
+        LEFT JOIN 
+            @marriages AS m
+        ON p.id == m.person_id
+    WHERE m.id IS NULL;
+
+
+DECLARE @now = DateTime.Now;
+
+@scores_per_age = 
+    SELECT 
+        (@now - DateTime.ParseExact([birth_date],"yyyy-MM-dd", null)).Days / 365 AS age, 
+        AVG((float)s.score) AS avg_score 
+    FROM @scores AS s
+        JOIN 
+            @people AS p
+        ON p.id == s.person_id
+    GROUP BY (@now - DateTime.ParseExact([birth_date],"yyyy-MM-dd", null)).Days / 365;
+
+
+@scores_per_ch = 
+    SELECT "present" AS credit_history, AVG ((float)s.score) AS avg_score 
+    FROM @scores AS s
+        JOIN 
+            @people AS p
+        ON p.id == s.person_id
+        JOIN 
+            @credit_histories AS ch
+        ON p.id == ch.person_id
+    WHERE ch.id != null
+UNION
+    SELECT "absent" AS credit_history, AVG ((float)s.score) AS avg_score 
+    FROM @scores AS s
+        JOIN 
+            @people AS p
+        ON p.id == s.person_id
+        LEFT JOIN 
+            @credit_histories AS ch
+        ON p.id == ch.person_id
+    WHERE ch.id IS NULL;
+
+
+@scores_per_salary = 
+    SELECT 
+        s.score AS score, 
+        AVG(j.salary) AS avg_salary 
+    FROM @scores AS s
+        LEFT JOIN 
+            @jobs AS j
+        ON s.person_id == j.person_id
+    GROUP BY s.score;
+
+/** OUTPUTS **/
+
+OUTPUT @scores_per_gender
+    TO @"/Result/scores_per_gender.csv"
+    USING Outputters.Csv();
+
+OUTPUT @scores_per_marriage
+    TO @"/Result/scores_per_marriage.csv"
+    USING Outputters.Csv();
+
+OUTPUT @scores_per_age
+    TO @"/Result/scores_per_age.csv"
+    ORDER BY age ASC
+    USING Outputters.Csv();
+
+OUTPUT @scores_per_ch
+    TO @"/Result/scores_per_ch.csv"
+    USING Outputters.Csv();
+
+OUTPUT @scores_per_salary
+    TO @"/Result/scores_per_salary.csv"
+    ORDER BY score ASC
     USING Outputters.Csv();
