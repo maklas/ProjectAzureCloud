@@ -147,8 +147,7 @@ public class Main {
 			if (person.getGender() == Gender.MALE) {
 				score += 5;
 			}
-			int age = person.getAge();
-			score += (age < 60 ? ((age - 18) / 7.0) : 0);
+			score += addScoreForAge(person.getAge());
 			if (marriage != null) {
 				score += 10;
 			}
@@ -167,6 +166,13 @@ public class Main {
 		}
 
 		return new ScoreInfo(personId, MathUtils.clamp((int) score, 0, 100));
+	}
+
+	private static double addScoreForAge(int age) {
+		if (age < 60) {
+			return (age - 18) / 7.0;
+		}
+		else return 6 - (age - 60);
 	}
 
 	/** All inclusive **/
